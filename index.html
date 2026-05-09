@@ -3,20 +3,42 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>360Booth</title>
+    <title>360Booth Studio</title>
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <header class="card">
-      <h1 id="brandName">360Booth</h1>
-      <p>Touchpix-style all-in-one photo + video booth experience</p>
+    <header class="panel hero">
+      <div>
+        <h1 id="brandName">360Booth Studio</h1>
+        <p class="subtitle">Full-featured Touchpix-style booth control center</p>
+      </div>
+      <div class="hero-actions">
+        <span id="onlineBadge" class="badge online">Online</span>
+        <button id="toggleOnline">Go Offline</button>
+        <button id="toggleLiveDisplay">Live Display</button>
+      </div>
     </header>
 
-    <main>
-      <section class="card grid two">
-        <div>
-          <h2>Capture</h2>
-          <label>Camera source
+    <main class="layout">
+      <section class="panel">
+        <h2>Event Dashboard</h2>
+        <div class="grid two">
+          <label>Event name <input id="eventName" placeholder="Brand Activation 2026" /></label>
+          <label>Host <input id="eventHost" placeholder="Client / Agency" /></label>
+          <label>Location <input id="eventLocation" placeholder="New York" /></label>
+          <label>Date <input id="eventDate" type="date" /></label>
+        </div>
+        <div class="row wrap">
+          <button id="saveEvent">Save Event</button>
+          <button id="loadEvent">Load Last</button>
+          <button id="clearEvent">Clear</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Capture Studio</h2>
+        <div class="grid three">
+          <label>Input Device
             <select id="device">
               <option>iPhone / iPad</option>
               <option>Android</option>
@@ -24,7 +46,7 @@
               <option>DSLR / Mirrorless</option>
             </select>
           </label>
-          <label>Capture mode
+          <label>Capture Mode
             <select id="mode">
               <option value="photo">Photo</option>
               <option value="ai-photo">AI Photo</option>
@@ -34,34 +56,72 @@
               <option value="gif">GIF</option>
             </select>
           </label>
-          <div class="row">
-            <button id="capture">Capture</button>
-            <button id="queueShare">Queue share (offline)</button>
-            <button id="flushShare">Send queued</button>
-          </div>
+          <label>Countdown (sec)
+            <input id="countdown" type="number" min="0" max="10" value="3" />
+          </label>
         </div>
 
-        <div>
-          <h2>Branding + Effects</h2>
-          <label>Brand name <input id="brandInput" placeholder="Brand" /></label>
-          <label>Overlay text <input id="overlayText" placeholder="Event 2026" /></label>
-          <label>Theme color <input id="themeColor" type="color" value="#3658ff" /></label>
-          <label>Effect
+        <div class="grid three">
+          <label>AI Style
+            <select id="aiStyle">
+              <option value="none">None</option>
+              <option value="cinematic">Cinematic</option>
+              <option value="retro">Retro</option>
+              <option value="neon">Neon</option>
+              <option value="editorial">Editorial</option>
+            </select>
+          </label>
+          <label>Background
+            <select id="backgroundMode">
+              <option value="original">Original</option>
+              <option value="remove">Auto Remove Background</option>
+              <option value="custom">Custom Background</option>
+            </select>
+          </label>
+          <label>Animation Effect
             <select id="effect">
               <option value="none">None</option>
               <option value="vivid">Vivid</option>
               <option value="mono">Mono</option>
-              <option value="neon">Neon</option>
+              <option value="sparkle">Sparkle</option>
+              <option value="glitch">Glitch</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="row wrap">
+          <button id="captureOne">Capture One</button>
+          <button id="captureBurst">Capture Burst (x3)</button>
+          <button id="retakeLast">Retake Last</button>
+        </div>
+
+        <p id="captureStatus" class="status">Ready to capture</p>
+      </section>
+
+      <section class="panel">
+        <h2>Branding + Templates</h2>
+        <div class="grid two">
+          <label>Brand title <input id="brandInput" placeholder="Your Brand" /></label>
+          <label>Theme color <input id="themeColor" type="color" value="#3658ff" /></label>
+          <label>Overlay text <input id="overlayText" placeholder="Event 2026" /></label>
+          <label>Template
+            <select id="template">
+              <option value="Clean Light">Clean Light</option>
+              <option value="VIP Night">VIP Night</option>
+              <option value="Wedding Gold">Wedding Gold</option>
+              <option value="Corporate Blue">Corporate Blue</option>
+              <option value="Festival Neon">Festival Neon</option>
+              <option value="Sports Energy">Sports Energy</option>
             </select>
           </label>
         </div>
       </section>
 
-      <section class="card">
-        <h2>Sharing + Event Controls</h2>
+      <section class="panel">
+        <h2>Sharing Center</h2>
         <div class="grid three">
           <div>
-            <p class="sub">Instant sharing</p>
+            <p class="sub">Instant Delivery</p>
             <div class="row wrap">
               <button class="share" data-channel="QR">QR</button>
               <button class="share" data-channel="Email">Email</button>
@@ -71,29 +131,51 @@
             </div>
           </div>
           <div>
-            <p class="sub">Cloud backups</p>
+            <p class="sub">Cloud Upload</p>
             <div class="row wrap">
               <button class="cloud" data-provider="Google Drive">Google Drive</button>
               <button class="cloud" data-provider="Dropbox">Dropbox</button>
             </div>
           </div>
           <div>
-            <p class="sub">Display + Print</p>
+            <p class="sub">Queue + Print</p>
             <div class="row wrap">
-              <button id="liveDisplay">Toggle live display</button>
-              <button id="print">Print strip</button>
+              <button id="queueShare">Queue Share</button>
+              <button id="flushShare">Flush Queue</button>
+              <button id="print">Print Strip</button>
             </div>
           </div>
         </div>
+        <div class="queue-stats">
+          <span>Queued: <strong id="queueCount">0</strong></span>
+          <span>Sent: <strong id="sentCount">0</strong></span>
+          <span>Printed: <strong id="printCount">0</strong></span>
+        </div>
+        <div id="qrBox" class="qr-box">QR preview appears here</div>
       </section>
 
-      <section class="card">
-        <h2>Session Gallery</h2>
+      <section class="panel">
+        <h2>Live Gallery</h2>
+        <div class="row wrap">
+          <label>Filter mode
+            <select id="galleryFilter">
+              <option value="all">All</option>
+              <option value="photo">Photo</option>
+              <option value="ai-photo">AI Photo</option>
+              <option value="boomerang">Boomerang</option>
+              <option value="video">Video</option>
+              <option value="slomo">Slow Motion</option>
+              <option value="gif">GIF</option>
+            </select>
+          </label>
+          <button id="exportGallery">Export JSON</button>
+          <button id="clearGallery">Clear Gallery</button>
+        </div>
         <div id="gallery" class="gallery"></div>
       </section>
 
-      <section class="card">
-        <h2>Activity</h2>
+      <section class="panel">
+        <h2>Activity Feed</h2>
         <ul id="log" class="log"></ul>
       </section>
     </main>
