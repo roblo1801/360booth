@@ -67,12 +67,40 @@ function updateOnlineBadge() {
 }
 
 // --- Camera management ---
+async function populateCameraList() {
+  if (!navigator.mediaDevices?.enumerateDevices) return;
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoInputs = devices.filter((d) => d.kind === 'videoinput');
+    const select = getById('cameraSource');
+    const currentValue = select.value;
+    select.innerHTML = '';
+    videoInputs.forEach((device, index) => {
+      const option = document.createElement('option');
+      option.value = device.deviceId;
+      option.textContent = device.label || `Camera ${index + 1}`;
+      select.append(option);
+    });
+    if (!videoInputs.length) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'Default (front)';
+      select.append(option);
+    } else if (currentValue && videoInputs.some((d) => d.deviceId === currentValue)) {
+      select.value = currentValue;
+    }
+  } catch (err) {
+    log(`Could not enumerate cameras: ${err.message}`);
+  }
+}
+
 async function startCamera() {
   try {
-    const constraints = {
-      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false,
-    };
+    const deviceId = getById('cameraSource').value;
+    const videoConstraints = deviceId
+      ? { deviceId: { ideal: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+      : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } };
+    const constraints = { video: videoConstraints, audio: false };
     cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
     const video = getById('cameraPreview');
     video.srcObject = cameraStream;
@@ -83,6 +111,15 @@ async function startCamera() {
     getById('stopCamera').disabled = false;
     setStatus('Camera ready — choose a mode and capture');
     log('Camera started');
+    // Re-enumerate now that permission is granted so device labels become available
+    await populateCameraList();
+    // Restore selection to the active track's device
+    const activeDeviceId = cameraStream.getVideoTracks()[0]?.getSettings()?.deviceId;
+    if (activeDeviceId) {
+      getById('cameraSource').value = activeDeviceId;
+    } else {
+      log('Could not determine active camera device ID');
+    }
   } catch (err) {
     log(`Camera access denied: ${err.message}`);
     setStatus('Camera unavailable — captures will be logged as simulation');
@@ -507,6 +544,7 @@ function clearGallery() {
 function bindEvents() {
   getById('startCamera').addEventListener('click', startCamera);
   getById('stopCamera').addEventListener('click', stopCamera);
+  getById('refreshCameras').addEventListener('click', populateCameraList);
 
   getById('captureOne').addEventListener('click', () => runCapture(1));
   getById('captureBurst').addEventListener('click', () => runCapture(3));
@@ -568,6 +606,7 @@ function bootstrap() {
   updateOnlineBadge();
   updateCounters();
   renderGallery();
+  populateCameraList();
   if (state.queue.length) log(`Recovered ${state.queue.length} queued item(s) from offline cache`);
 }
 

@@ -96,6 +96,14 @@
         <canvas id="captureCanvas" hidden></canvas>
 
         <div class="row wrap" style="margin-top:.5rem">
+          <label>Camera source
+            <select id="cameraSource">
+              <option value="">Default (front)</option>
+            </select>
+          </label>
+          <button id="refreshCameras">↺ Refresh</button>
+        </div>
+        <div class="row wrap">
           <button id="startCamera">📷 Start Camera</button>
           <button id="stopCamera" disabled>⏹ Stop Camera</button>
         </div>
