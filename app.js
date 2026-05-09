@@ -180,7 +180,7 @@ function buildItemCard(item) {
     if (media.type === 'image') {
       mediaHtml = `<img src="${media.url}" class="card-thumb" alt="${item.mode} capture" />`;
     } else {
-      mediaHtml = `<video src="${media.url}" class="card-thumb" loop muted autoplay playsinline></video>`;
+      mediaHtml = `<video src="${media.url}" class="card-thumb" loop muted autoplay playsinline aria-label="${item.mode} video capture"></video>`;
     }
   }
 
@@ -362,8 +362,7 @@ function generateQr(text) {
   img.width = 140;
   img.height = 140;
   img.onerror = () => fakeQr(text);
-  box.innerHTML = '';
-  box.appendChild(img);
+  box.replaceChildren(img);
 }
 
 function fakeQr(text) {
@@ -416,10 +415,10 @@ function share(channel) {
   if (channel === 'Email') {
     window.open(
       `mailto:?subject=${encodeURIComponent(eventLabel)}&body=${encodeURIComponent(shareText)}`,
-      '_blank',
+      '_self',
     );
   } else if (channel === 'SMS') {
-    window.open(`sms:?body=${encodeURIComponent(shareText)}`, '_blank');
+    window.open(`sms:?body=${encodeURIComponent(shareText)}`, '_self');
   } else if (channel === 'WhatsApp') {
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
   } else if (channel === 'Download') {
@@ -467,10 +466,11 @@ function toggleLiveDisplay() {
 
 function revokeMedia(id) {
   const media = mediaStore[id];
-  if (media) {
-    if (media.url.startsWith('blob:')) URL.revokeObjectURL(media.url);
-    delete mediaStore[id];
-  }
+  if (!media) return;
+  // Only revoke blob URL if no other gallery item shares the same URL
+  const stillUsed = state.gallery.some((item) => item.id !== id && mediaStore[item.id]?.url === media.url);
+  if (!stillUsed && media.url.startsWith('blob:')) URL.revokeObjectURL(media.url);
+  delete mediaStore[id];
 }
 
 function retakeLast() {
