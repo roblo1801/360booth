@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>360Booth</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="card">
+      <h1 id="brandName">360Booth</h1>
+      <p>Touchpix-style all-in-one photo + video booth experience</p>
+    </header>
+
+    <main>
+      <section class="card grid two">
+        <div>
+          <h2>Capture</h2>
+          <label>Camera source
+            <select id="device">
+              <option>iPhone / iPad</option>
+              <option>Android</option>
+              <option>GoPro</option>
+              <option>DSLR / Mirrorless</option>
+            </select>
+          </label>
+          <label>Capture mode
+            <select id="mode">
+              <option value="photo">Photo</option>
+              <option value="ai-photo">AI Photo</option>
+              <option value="boomerang">Boomerang</option>
+              <option value="video">Video</option>
+              <option value="slomo">Slow Motion</option>
+              <option value="gif">GIF</option>
+            </select>
+          </label>
+          <div class="row">
+            <button id="capture">Capture</button>
+            <button id="queueShare">Queue share (offline)</button>
+            <button id="flushShare">Send queued</button>
+          </div>
+        </div>
+
+        <div>
+          <h2>Branding + Effects</h2>
+          <label>Brand name <input id="brandInput" placeholder="Brand" /></label>
+          <label>Overlay text <input id="overlayText" placeholder="Event 2026" /></label>
+          <label>Theme color <input id="themeColor" type="color" value="#3658ff" /></label>
+          <label>Effect
+            <select id="effect">
+              <option value="none">None</option>
+              <option value="vivid">Vivid</option>
+              <option value="mono">Mono</option>
+              <option value="neon">Neon</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Sharing + Event Controls</h2>
+        <div class="grid three">
+          <div>
+            <p class="sub">Instant sharing</p>
+            <div class="row wrap">
+              <button class="share" data-channel="QR">QR</button>
+              <button class="share" data-channel="Email">Email</button>
+              <button class="share" data-channel="SMS">SMS</button>
+              <button class="share" data-channel="WhatsApp">WhatsApp</button>
+              <button class="share" data-channel="Download">Download</button>
+            </div>
+          </div>
+          <div>
+            <p class="sub">Cloud backups</p>
+            <div class="row wrap">
+              <button class="cloud" data-provider="Google Drive">Google Drive</button>
+              <button class="cloud" data-provider="Dropbox">Dropbox</button>
+            </div>
+          </div>
+          <div>
+            <p class="sub">Display + Print</p>
+            <div class="row wrap">
+              <button id="liveDisplay">Toggle live display</button>
+              <button id="print">Print strip</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Session Gallery</h2>
+        <div id="gallery" class="gallery"></div>
+      </section>
+
+      <section class="card">
+        <h2>Activity</h2>
+        <ul id="log" class="log"></ul>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
