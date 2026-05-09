@@ -1,4 +1,4 @@
-const $ = (id) => document.getElementById(id);
+const getById = (id) => document.getElementById(id);
 
 const state = {
   online: true,
@@ -11,6 +11,18 @@ const state = {
 };
 
 const syncChannel = 'BroadcastChannel' in window ? new BroadcastChannel('360booth-sync') : null;
+let idCounter = 0;
+
+function generateId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  if (window.crypto?.getRandomValues) {
+    const bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  idCounter += 1;
+  return `${Date.now()}-${idCounter}`;
+}
 
 function saveState() {
   localStorage.setItem('shareQueue', JSON.stringify(state.queue));
@@ -27,23 +39,23 @@ function notifyPeers(type, payload) {
 function log(message) {
   const li = document.createElement('li');
   li.textContent = `${new Date().toLocaleTimeString()} — ${message}`;
-  $('log').prepend(li);
+  getById('log').prepend(li);
 }
 
 function setStatus(message) {
-  $('captureStatus').textContent = message;
+  getById('captureStatus').textContent = message;
 }
 
 function updateCounters() {
-  $('queueCount').textContent = state.queue.length;
-  $('sentCount').textContent = state.sentCount;
-  $('printCount').textContent = state.printCount;
+  getById('queueCount').textContent = state.queue.length;
+  getById('sentCount').textContent = state.sentCount;
+  getById('printCount').textContent = state.printCount;
 }
 
 function updateOnlineBadge() {
-  $('onlineBadge').textContent = state.online ? 'Online' : 'Offline';
-  $('onlineBadge').className = `badge ${state.online ? 'online' : 'offline'}`;
-  $('toggleOnline').textContent = state.online ? 'Go Offline' : 'Go Online';
+  getById('onlineBadge').textContent = state.online ? 'Online' : 'Offline';
+  getById('onlineBadge').className = `badge ${state.online ? 'online' : 'offline'}`;
+  getById('toggleOnline').textContent = state.online ? 'Go Offline' : 'Go Online';
 }
 
 function buildItemCard(item) {
@@ -60,8 +72,8 @@ function buildItemCard(item) {
 }
 
 function renderGallery() {
-  const filter = $('galleryFilter').value;
-  const container = $('gallery');
+  const filter = getById('galleryFilter').value;
+  const container = getById('gallery');
   container.innerHTML = '';
 
   state.gallery
@@ -90,20 +102,20 @@ function countdown(seconds) {
 
 function createCaptureItem() {
   return {
-    id: crypto.randomUUID(),
-    mode: $('mode').value,
-    device: $('device').value,
-    effect: $('effect').value,
-    aiStyle: $('aiStyle').value,
-    backgroundMode: $('backgroundMode').value,
-    template: $('template').value,
-    overlay: $('overlayText').value,
+    id: generateId(),
+    mode: getById('mode').value,
+    device: getById('device').value,
+    effect: getById('effect').value,
+    aiStyle: getById('aiStyle').value,
+    backgroundMode: getById('backgroundMode').value,
+    template: getById('template').value,
+    overlay: getById('overlayText').value,
     createdAt: Date.now(),
   };
 }
 
 async function runCapture(iterations = 1) {
-  const wait = Number($('countdown').value || 0);
+  const wait = Number(getById('countdown').value || 0);
   await countdown(wait);
 
   for (let i = 0; i < iterations; i += 1) {
@@ -119,16 +131,16 @@ async function runCapture(iterations = 1) {
 }
 
 function updateBranding() {
-  $('brandName').textContent = $('brandInput').value || '360Booth Studio';
-  document.documentElement.style.setProperty('--accent', $('themeColor').value);
+  getById('brandName').textContent = getById('brandInput').value || '360Booth Studio';
+  document.documentElement.style.setProperty('--accent', getById('themeColor').value);
 }
 
 function saveEvent() {
   state.event = {
-    name: $('eventName').value,
-    host: $('eventHost').value,
-    location: $('eventLocation').value,
-    date: $('eventDate').value,
+    name: getById('eventName').value,
+    host: getById('eventHost').value,
+    location: getById('eventLocation').value,
+    date: getById('eventDate').value,
   };
   saveState();
   log(`Saved event: ${state.event.name || 'Untitled Event'}`);
@@ -136,20 +148,20 @@ function saveEvent() {
 }
 
 function loadEvent() {
-  $('eventName').value = state.event.name || '';
-  $('eventHost').value = state.event.host || '';
-  $('eventLocation').value = state.event.location || '';
-  $('eventDate').value = state.event.date || '';
+  getById('eventName').value = state.event.name || '';
+  getById('eventHost').value = state.event.host || '';
+  getById('eventLocation').value = state.event.location || '';
+  getById('eventDate').value = state.event.date || '';
   log(`Loaded event: ${state.event.name || 'Untitled Event'}`);
 }
 
 function clearEvent() {
   state.event = {};
   saveState();
-  $('eventName').value = '';
-  $('eventHost').value = '';
-  $('eventLocation').value = '';
-  $('eventDate').value = '';
+  getById('eventName').value = '';
+  getById('eventHost').value = '';
+  getById('eventLocation').value = '';
+  getById('eventDate').value = '';
   log('Cleared event data');
 }
 
@@ -182,7 +194,7 @@ function flushQueue() {
 
 function fakeQr(text) {
   const data = encodeURIComponent(text);
-  $('qrBox').innerHTML = `
+  getById('qrBox').innerHTML = `
     <svg width="140" height="140" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg" aria-label="QR">
       <rect width="140" height="140" fill="#fff" />
       <rect x="10" y="10" width="120" height="120" fill="#000" opacity=".07" />
@@ -276,27 +288,27 @@ function clearGallery() {
 }
 
 function bindEvents() {
-  $('captureOne').addEventListener('click', () => runCapture(1));
-  $('captureBurst').addEventListener('click', () => runCapture(3));
-  $('retakeLast').addEventListener('click', retakeLast);
+  getById('captureOne').addEventListener('click', () => runCapture(1));
+  getById('captureBurst').addEventListener('click', () => runCapture(3));
+  getById('retakeLast').addEventListener('click', retakeLast);
 
-  $('brandInput').addEventListener('input', updateBranding);
-  $('themeColor').addEventListener('input', updateBranding);
+  getById('brandInput').addEventListener('input', updateBranding);
+  getById('themeColor').addEventListener('input', updateBranding);
 
-  $('saveEvent').addEventListener('click', saveEvent);
-  $('loadEvent').addEventListener('click', loadEvent);
-  $('clearEvent').addEventListener('click', clearEvent);
+  getById('saveEvent').addEventListener('click', saveEvent);
+  getById('loadEvent').addEventListener('click', loadEvent);
+  getById('clearEvent').addEventListener('click', clearEvent);
 
-  $('queueShare').addEventListener('click', queueShare);
-  $('flushShare').addEventListener('click', flushQueue);
-  $('print').addEventListener('click', printStrip);
+  getById('queueShare').addEventListener('click', queueShare);
+  getById('flushShare').addEventListener('click', flushQueue);
+  getById('print').addEventListener('click', printStrip);
 
-  $('toggleOnline').addEventListener('click', toggleOnline);
-  $('toggleLiveDisplay').addEventListener('click', toggleLiveDisplay);
+  getById('toggleOnline').addEventListener('click', toggleOnline);
+  getById('toggleLiveDisplay').addEventListener('click', toggleLiveDisplay);
 
-  $('galleryFilter').addEventListener('change', renderGallery);
-  $('exportGallery').addEventListener('click', exportGallery);
-  $('clearGallery').addEventListener('click', clearGallery);
+  getById('galleryFilter').addEventListener('change', renderGallery);
+  getById('exportGallery').addEventListener('click', exportGallery);
+  getById('clearGallery').addEventListener('click', clearGallery);
 
   document.querySelectorAll('.share').forEach((btn) => {
     btn.addEventListener('click', () => share(btn.dataset.channel));

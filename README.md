@@ -20,7 +20,7 @@ Touchpix-style photo + video booth web app with a full-feature dashboard.
 No build step required.
 
 ```bash
-cd /home/runner/work/360booth/360booth
+cd 360booth
 python3 -m http.server 4173
 ```
 
