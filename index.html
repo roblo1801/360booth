@@ -89,6 +89,17 @@
           </label>
         </div>
 
+        <div class="camera-container">
+          <div id="cameraPlaceholder" class="camera-placeholder">📷 Camera preview — click "Start Camera" to begin</div>
+          <video id="cameraPreview" class="camera-preview" playsinline muted hidden></video>
+        </div>
+        <canvas id="captureCanvas" hidden></canvas>
+
+        <div class="row wrap" style="margin-top:.5rem">
+          <button id="startCamera">📷 Start Camera</button>
+          <button id="stopCamera" disabled>⏹ Stop Camera</button>
+        </div>
+
         <div class="row wrap">
           <button id="captureOne">Capture One</button>
           <button id="captureBurst">Capture Burst (x3)</button>

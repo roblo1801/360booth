@@ -135,3 +135,47 @@ button:hover { filter: brightness(1.1); }
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent) inset;
 }
+
+/* Camera preview */
+.camera-container {
+  margin-top: .75rem;
+  background: #0a0e1f;
+  border-radius: 10px;
+  overflow: hidden;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-placeholder {
+  color: #6272a4;
+  font-size: .95rem;
+  text-align: center;
+  padding: 1.25rem;
+}
+
+.camera-preview {
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
+}
+
+/* Gallery card thumbnails */
+.card-thumb {
+  width: 100%;
+  border-radius: 7px;
+  object-fit: cover;
+  margin-bottom: .4rem;
+  max-height: 150px;
+  display: block;
+}
+
+.btn-dl {
+  margin-top: .4rem;
+  font-size: .78rem;
+  padding: .28rem .5rem;
+  width: 100%;
+}
