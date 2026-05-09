@@ -10,8 +10,16 @@ const state = {
   event: JSON.parse(localStorage.getItem('activeEvent') || '{}'),
 };
 
+// In-memory media store: item.id -> { type: 'image'|'video', url: string }
+const mediaStore = {};
+
 const syncChannel = 'BroadcastChannel' in window ? new BroadcastChannel('360booth-sync') : null;
 let idCounter = 0;
+
+// --- Camera state ---
+let cameraStream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
 
 function generateId() {
   if (window.crypto?.randomUUID) return window.crypto.randomUUID();
@@ -58,16 +66,137 @@ function updateOnlineBadge() {
   getById('toggleOnline').textContent = state.online ? 'Go Offline' : 'Go Online';
 }
 
+// --- Camera management ---
+async function startCamera() {
+  try {
+    const constraints = {
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false,
+    };
+    cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const video = getById('cameraPreview');
+    video.srcObject = cameraStream;
+    await video.play();
+    getById('cameraPlaceholder').hidden = true;
+    video.hidden = false;
+    getById('startCamera').disabled = true;
+    getById('stopCamera').disabled = false;
+    setStatus('Camera ready — choose a mode and capture');
+    log('Camera started');
+  } catch (err) {
+    log(`Camera access denied: ${err.message}`);
+    setStatus('Camera unavailable — captures will be logged as simulation');
+  }
+}
+
+function stopCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach((t) => t.stop());
+    cameraStream = null;
+  }
+  const video = getById('cameraPreview');
+  video.srcObject = null;
+  video.hidden = true;
+  getById('cameraPlaceholder').hidden = false;
+  getById('startCamera').disabled = false;
+  getById('stopCamera').disabled = true;
+  log('Camera stopped');
+}
+
+// --- Visual effects ---
+function buildFilter(effect, aiStyle) {
+  const parts = [];
+  if (effect === 'vivid') parts.push('saturate(2) contrast(1.2)');
+  else if (effect === 'mono') parts.push('grayscale(1)');
+  else if (effect === 'sparkle') parts.push('brightness(1.4) saturate(1.8)');
+  else if (effect === 'glitch') parts.push('hue-rotate(90deg) contrast(1.4)');
+
+  if (aiStyle === 'cinematic') parts.push('contrast(1.2) saturate(0.75) brightness(0.9)');
+  else if (aiStyle === 'retro') parts.push('sepia(0.85) contrast(1.1)');
+  else if (aiStyle === 'neon') parts.push('saturate(3) brightness(1.15) contrast(1.3)');
+  else if (aiStyle === 'editorial') parts.push('grayscale(0.6) contrast(1.5)');
+
+  return parts.join(' ') || 'none';
+}
+
+// --- Photo capture ---
+async function capturePhotoFromCamera(effect, aiStyle, overlayText) {
+  const video = getById('cameraPreview');
+  if (!video.srcObject || video.readyState < 2) return null;
+
+  const canvas = getById('captureCanvas');
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  const ctx = canvas.getContext('2d');
+
+  ctx.filter = buildFilter(effect, aiStyle);
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  ctx.filter = 'none';
+
+  if (overlayText) {
+    const barH = Math.round(canvas.height * 0.09);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, canvas.height - barH, canvas.width, barH);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${Math.round(barH * 0.55)}px Inter, system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(overlayText, canvas.width / 2, canvas.height - barH / 2);
+  }
+
+  return canvas.toDataURL('image/jpeg', 0.88);
+}
+
+// --- Video capture ---
+function captureVideoFromCamera() {
+  return new Promise((resolve) => {
+    if (!cameraStream) { resolve(null); return; }
+    recordedChunks = [];
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+      ? 'video/webm;codecs=vp9'
+      : 'video/webm';
+    mediaRecorder = new MediaRecorder(cameraStream, { mimeType });
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      resolve(URL.createObjectURL(blob));
+    };
+    mediaRecorder.start();
+    setTimeout(() => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    }, 3000);
+  });
+}
+
+// --- Gallery card ---
 function buildItemCard(item) {
   const el = document.createElement('article');
   el.className = 'card-item';
   el.dataset.mode = item.mode;
+
+  const media = mediaStore[item.id];
+  let mediaHtml = '';
+  if (media) {
+    if (media.type === 'image') {
+      mediaHtml = `<img src="${media.url}" class="card-thumb" alt="${item.mode} capture" />`;
+    } else {
+      mediaHtml = `<video src="${media.url}" class="card-thumb" loop muted autoplay playsinline></video>`;
+    }
+  }
+
   el.innerHTML = `
+    ${mediaHtml}
     <div class="title">${item.mode.toUpperCase()}</div>
     <div class="meta">${item.device} • ${item.effect} • ${item.template}</div>
     <div class="meta">AI: ${item.aiStyle} • BG: ${item.backgroundMode}</div>
     <div class="overlay">${item.overlay || 'No overlay'}</div>
+    ${media ? '<button class="btn-dl">⬇ Download</button>' : ''}
   `;
+
+  if (media) {
+    el.querySelector('.btn-dl').addEventListener('click', () => downloadItem(item.id, item.mode));
+  }
+
   return el;
 }
 
@@ -114,12 +243,42 @@ function createCaptureItem() {
   };
 }
 
+function setCaptureButtons(enabled) {
+  ['captureOne', 'captureBurst', 'retakeLast'].forEach((id) => {
+    getById(id).disabled = !enabled;
+  });
+}
+
 async function runCapture(iterations = 1) {
   const wait = Number(getById('countdown').value || 0);
   await countdown(wait);
 
+  const mode = getById('mode').value;
+  const effect = getById('effect').value;
+  const aiStyle = getById('aiStyle').value;
+  const overlayText = getById('overlayText').value;
+  const isVideo = mode === 'video' || mode === 'slomo';
+
+  setCaptureButtons(false);
+
+  let sharedVideoUrl = null;
+  if (isVideo && cameraStream) {
+    setStatus('Recording… 3 seconds');
+    sharedVideoUrl = await captureVideoFromCamera();
+  }
+
   for (let i = 0; i < iterations; i += 1) {
     const item = createCaptureItem();
+
+    if (cameraStream) {
+      if (isVideo && sharedVideoUrl) {
+        mediaStore[item.id] = { type: 'video', url: sharedVideoUrl };
+      } else if (!isVideo) {
+        const dataUrl = await capturePhotoFromCamera(effect, aiStyle, overlayText);
+        if (dataUrl) mediaStore[item.id] = { type: 'image', url: dataUrl };
+      }
+    }
+
     state.gallery.unshift(item);
     log(`${item.mode} captured (${i + 1}/${iterations}) on ${item.device}`);
     notifyPeers('capture', item);
@@ -128,6 +287,7 @@ async function runCapture(iterations = 1) {
   saveState();
   renderGallery();
   setStatus(`Captured ${iterations} item${iterations > 1 ? 's' : ''}`);
+  setCaptureButtons(true);
 }
 
 function updateBranding() {
@@ -192,6 +352,20 @@ function flushQueue() {
   log('Flushed queued shares to delivery channels');
 }
 
+// --- QR generation via free public API ---
+function generateQr(text) {
+  const encoded = encodeURIComponent(text);
+  const box = getById('qrBox');
+  const img = document.createElement('img');
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encoded}&margin=6`;
+  img.alt = 'QR Code';
+  img.width = 140;
+  img.height = 140;
+  img.onerror = () => fakeQr(text);
+  box.innerHTML = '';
+  box.appendChild(img);
+}
+
 function fakeQr(text) {
   const data = encodeURIComponent(text);
   getById('qrBox').innerHTML = `
@@ -204,6 +378,19 @@ function fakeQr(text) {
   `;
 }
 
+// --- Download individual capture ---
+function downloadItem(id, mode) {
+  const media = mediaStore[id];
+  if (!media) { log('No media file available for this item'); return; }
+  const ext = media.type === 'video' ? 'webm' : 'jpg';
+  const a = document.createElement('a');
+  a.href = media.url;
+  a.download = `360booth-${mode}-${id.slice(0, 8)}.${ext}`;
+  a.click();
+  log(`Downloaded ${mode} capture`);
+}
+
+// --- Sharing center ---
 function share(channel) {
   const item = state.gallery[0];
   if (!item) {
@@ -217,9 +404,29 @@ function share(channel) {
     log(`Offline: queued share for ${channel}`);
     return;
   }
+
+  const eventLabel = state.event.name ? `Event: ${state.event.name}` : '360Booth Capture';
+  const shareText = `${eventLabel} | Mode: ${item.mode.toUpperCase()} | ${new Date(item.createdAt).toLocaleDateString()} — captured with 360Booth Studio`;
+
   if (channel === 'QR') {
-    fakeQr(`${item.id}-${item.mode}-${Date.now()}`);
+    generateQr(shareText);
+    log('QR code generated');
+    return;
   }
+  if (channel === 'Email') {
+    window.open(
+      `mailto:?subject=${encodeURIComponent(eventLabel)}&body=${encodeURIComponent(shareText)}`,
+      '_blank',
+    );
+  } else if (channel === 'SMS') {
+    window.open(`sms:?body=${encodeURIComponent(shareText)}`, '_blank');
+  } else if (channel === 'WhatsApp') {
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
+  } else if (channel === 'Download') {
+    downloadItem(item.id, item.mode);
+    return;
+  }
+
   state.sentCount += 1;
   saveState();
   updateCounters();
@@ -258,12 +465,21 @@ function toggleLiveDisplay() {
   log(`Live display ${state.liveDisplay ? 'enabled' : 'disabled'}`);
 }
 
+function revokeMedia(id) {
+  const media = mediaStore[id];
+  if (media) {
+    if (media.url.startsWith('blob:')) URL.revokeObjectURL(media.url);
+    delete mediaStore[id];
+  }
+}
+
 function retakeLast() {
   if (!state.gallery.length) {
     log('No capture available to retake');
     return;
   }
   const removed = state.gallery.shift();
+  revokeMedia(removed.id);
   saveState();
   renderGallery();
   log(`Retake requested for ${removed.mode}`);
@@ -281,6 +497,7 @@ function exportGallery() {
 }
 
 function clearGallery() {
+  state.gallery.forEach((item) => revokeMedia(item.id));
   state.gallery = [];
   saveState();
   renderGallery();
@@ -288,6 +505,9 @@ function clearGallery() {
 }
 
 function bindEvents() {
+  getById('startCamera').addEventListener('click', startCamera);
+  getById('stopCamera').addEventListener('click', stopCamera);
+
   getById('captureOne').addEventListener('click', () => runCapture(1));
   getById('captureBurst').addEventListener('click', () => runCapture(3));
   getById('retakeLast').addEventListener('click', retakeLast);
